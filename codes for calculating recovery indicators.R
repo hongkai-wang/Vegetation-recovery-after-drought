@@ -68,7 +68,6 @@ library(dplyr)
 library(purrr)
 library(tibble)
 
-# === 判断是否为上升趋势：线性拟合斜率 > 0 ===
 is_increasing <- function(ts) {
   if (all(is.na(ts)) || length(na.omit(ts)) < 2) return(FALSE)
   time_index <- seq_along(ts)
@@ -76,7 +75,6 @@ is_increasing <- function(ts) {
   return(coef(fit)[2] > 0)
 }
 
-# === 从 results_LAIWUE 中筛选：曾受干扰 且 呈上升趋势 ===
 results_LAIWUE_increased <- results_LAIWUE %>%
   rowwise() %>%
   filter(
@@ -476,6 +474,7 @@ ggsave(
   dpi = 600,
   bg = "white"
 )
+
 
 
 
