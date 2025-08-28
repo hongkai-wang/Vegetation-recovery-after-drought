@@ -71,11 +71,10 @@ combined_plot <- ggplot() +
     legend.text = element_text(size = 14) 
   )
 
-# === 保存图像 ===
 ggsave("Fig_Global_Recovery_Types_Map_LegendBottom_Enhanced.png",
        combined_plot, width = 14.5, height = 7, dpi = 600, bg = "white")
 
-# === 显示图像 ===
-print(combined_plot)
+
+
 
 
