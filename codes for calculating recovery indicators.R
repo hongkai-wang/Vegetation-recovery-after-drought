@@ -60,7 +60,7 @@ for (i in seq_len(nrow(SPEI_event_df))) {
   results_list[[i]] <- result_row
 }
 
-# === 合并所有结果为数据框 ===
+# 合并所有结果为数据框 
 results_LAIWUE <- bind_rows(results_list)
 
 
@@ -93,7 +93,7 @@ results_LAIWUE_increased <- results_LAIWUE %>%
 library(dplyr)
 library(purrr)
 
-# === 判断首次出现“连续 N 月 Z-score ≥ 阈值”的位置 ===
+# 判断首次出现“连续 N 月 Z-score ≥ 阈值”的位置
 get_lag_to_positive_strict <- function(ts, min_consecutive = 4, threshold = 0) {
   n <- length(ts)
   if (n < min_consecutive || all(is.na(ts))) return(NA)
@@ -107,7 +107,7 @@ get_lag_to_positive_strict <- function(ts, min_consecutive = 4, threshold = 0) {
   return(NA)
 }
 
-# === 恢复指标提取函数：整合 stricter 滞后期判定 ===
+# 恢复指标提取函数：整合 stricter 滞后期判定
 extract_metrics <- function(zs, min_consecutive = 4, threshold = 0) {
   n <- length(zs)
   if (n == 0 || all(is.na(zs))) {
@@ -127,8 +127,6 @@ extract_metrics <- function(zs, min_consecutive = 4, threshold = 0) {
       post_max_rel_idx <- which.max(post_zs)
       rate <- (post_max_val - min_val) / post_max_rel_idx
     }
-    
-    # 使用更严格的“转正”滞后期判定
     lag <- get_lag_to_positive_strict(post_zs, min_consecutive = min_consecutive, threshold = threshold)
   } else {
     rate <- NA
@@ -145,7 +143,7 @@ extract_metrics <- function(zs, min_consecutive = 4, threshold = 0) {
 }
 
 
-# === 分类函数（基于转正滞后期）===
+#分类函数（基于转正滞后期）
 get_recovery_type <- function(lai_zs, wue_zs) {
   lai_lag <- extract_metrics(lai_zs)$lag_to_positive
   wue_lag <- extract_metrics(wue_zs)$lag_to_positive
@@ -164,7 +162,7 @@ get_recovery_type <- function(lai_zs, wue_zs) {
   }
 }
 
-# === 应用于你的主数据框 ===
+# 应用于主数据框
 results_processed <- results_LAIWUE_increased %>%
   rowwise() %>%
   mutate(
@@ -191,98 +189,8 @@ results_processed <- results_LAIWUE_increased %>%
   ungroup() %>%
   dplyr::select(-lai_metrics, -wue_metrics)
 
-# === 可视化或统计输出 ===
+# 可视化或统计输出
 table(results_processed$recovery_type_label)
-
-
-
-
-
-#绘制地理分布
-library(ggplot2)
-library(dplyr)
-library(sf)
-library(rnaturalearth)
-library(rnaturalearthdata)
-
-# 1. 读取陆地边界
-world_land <- ne_countries(scale = "medium", returnclass = "sf")
-
-# 2. 设置恢复类型
-results_processed <- results_processed %>%
-  mutate(recovery_type_label = factor(
-    recovery_type_label,
-    levels = c("Type1 Full Recovery", 
-               "Type2 Structure Dominant", 
-               "Type3 Function Dominant", 
-               "Type4 Failed Recovery")
-  ))
-
-# 3. 设置柔和高级配色
-custom_colors <- c(
-  "Type1 Full Recovery" = "#4A90E2",  # 明亮蓝
-  "Type2 Structure Dominant" = "#50E3C2",  # 青绿色
-  "Type3 Function Dominant" = "#9013FE",  # 紫罗兰色
-  "Type4 Failed Recovery" = "#F5A623"    # 暖橙色
-)
-
-custom_colors <- c(
-  "Type1 Full Recovery" = "#FF6F61",  # 珊瑚红
-  "Type2 Structure Dominant" = "#6B5B95",  # 紫色调
-  "Type3 Function Dominant" = "#88B04B",  # 柔和绿
-  "Type4 Failed Recovery" = "#F7CAC9"    # 淡粉
-)
-
-custom_colors <- c(
-  "Type1 Full Recovery" = "#2E4057",  # 深蓝灰
-  "Type2 Structure Dominant" = "#66B2FF",  # 亮蓝
-  "Type3 Function Dominant" = "#FF9F43",  # 橙色
-  "Type4 Failed Recovery" = "#9B9B9B"    # 中灰
-)
-
-custom_colors <- c(
-  "Type1 Full Recovery" = "#3B528B",  # 深蓝
-  "Type2 Structure Dominant" = "#4393C3",  # 蓝绿
-  "Type3 Function Dominant" = "#7BCCC4",  # 浅绿
-  "Type4 Failed Recovery" = "#FDE725"    # 明黄
-)
-
-
-# 4. 绘图
-p <- ggplot() +
-  geom_point(data = results_processed,
-             aes(x = lon, y = lat, color = recovery_type_label),
-             size = 2, alpha = 0.5, shape = 16) +  # 实心圆，更大点
-  geom_sf(data = world_land, fill = NA, color = "black", linewidth = 0.3) +  # 黑色国界线
-  scale_color_manual(
-    name = "Recovery Type",
-    values = custom_colors,
-    guide = guide_legend(
-      override.aes = list(size = 6, shape = 16, stroke = 0),  # 图例点大且无边框
-      keywidth = 1.5, keyheight = 1
-    )
-  ) +
-  coord_sf(xlim = c(-180, 180), ylim = c(-60, 90), expand = FALSE) +
-  labs(
-    title = "Global Spatial Distribution of Vegetation Drought Recovery Types",
-    x = NULL, y = NULL
-  ) +
-  theme_void(base_size = 14) +
-  theme(
-    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-    legend.position = "bottom",
-    legend.title = element_text(size = 16, face = "bold"),
-    legend.text = element_text(size = 14),
-    legend.key = element_rect(fill = "white", color = NA),  # 去掉图例键边框
-    panel.background = element_rect(fill = "white", color = "black", linewidth = 0.5)
-  )
-
-# 5. 保存
-ggsave("Fig_Global_Drought_Recovery_Types_ImprovedLegend.png",
-       plot = p, width = 15, height = 7, dpi = 300, bg = "white")
-
-print(p)
-
 
 
 #绘制数量占比
@@ -290,28 +198,21 @@ library(ggplot2)
 library(dplyr)
 
 # === 1. 计算占比 ===
-# 先提取为纯 data.frame，完全去掉 geometry 等复杂结构
 results_df <- as.data.frame(st_drop_geometry(results_processed))
 
-# 再统计恢复类型的数量和占比
+# 统计恢复类型的数量和占比
 type_counts <- results_df %>%
   group_by(recovery_type_label) %>%
   summarise(n = n()) %>%
   mutate(Percent = n / sum(n) * 100)
-
-
-
-
-
-# === 2. 设置颜色（建议选用更高级的配色方案）===
+# 2. 设置颜色
 custom_colors <- c(
-  "Type1 Full Recovery" = "#3B528B",  # 深蓝
-  "Type2 Structure Dominant" = "#4393C3",  # 蓝绿
-  "Type3 Function Dominant" = "#7BCCC4",  # 浅绿
-  "Type4 Failed Recovery" = "#FDE725"    # 明黄
+  "Type1 Full Recovery" = "#3B528B", 
+  "Type2 Structure Dominant" = "#4393C3",  
+  "Type3 Function Dominant" = "#7BCCC4",  
+  "Type4 Failed Recovery" = "#FDE725" 
 )
 
-# === 3. 绘图 ===
 p1 <- ggplot(type_counts, aes(x = reorder(recovery_type_label, -Percent), 
                              y = Percent, fill = recovery_type_label)) +
   geom_col(width = 0.7, color = "black", linewidth = 0.3) +
@@ -332,31 +233,25 @@ p1 <- ggplot(type_counts, aes(x = reorder(recovery_type_label, -Percent),
     panel.grid.minor = element_blank()
   )
 
-# === 4. 保存高分辨率图 ===
 ggsave("Fig_Recovery_Type_Proportions_Bar.png",
        plot = p, width = 8, height = 5, dpi = 300, bg = "white")
 
 print(p1)
 
-
-
 #不同恢复类型的恢复指标箱线图
 names(results_processed)
-#更新加Range
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(forcats)
 library(ggsci)
 library(ggpubr)
-
 # === 1. 添加 Range 指标到原始数据 ===
 results_processed <- results_processed %>%
   mutate(
     lai_range = lai_max - lai_min,
     wue_range = wue_max - wue_min
   )
-
 # === 2. 数据整理（加入 Range）===
 plot_data <- results_processed %>%
   select(recovery_type_label,
@@ -390,7 +285,7 @@ plot_data <- results_processed %>%
     recovery_type_label = fct_relevel(recovery_type_label, "Type1", "Type2", "Type3", "Type4")
   )
 
-# === 3. 显著性检验 ===
+#3. 显著性检验
 valid_combos <- plot_data %>%
   group_by(indicator, recovery_type_label, group) %>%
   summarise(n = sum(!is.na(value)), .groups = "drop") %>%
@@ -416,7 +311,7 @@ stat_tests <- stat_tests %>%
     by = c("indicator", "recovery_type_label")
   )
 
-# === 4. 自定义 Times New Roman 主题 ===
+# 4. 自定义 Times New Roman 主题
 theme_sci <- function(base_size = 13) {
   theme_minimal(base_size = base_size, base_family = "Times New Roman") +
     theme(
@@ -430,12 +325,11 @@ theme_sci <- function(base_size = 13) {
       strip.text = element_text(face = "bold"),
       legend.position = "top",
       legend.title = element_blank(),
-      legend.text = element_text(size = rel(1.5), family = "Times New Roman"),  # 👈 图例文字大小改这里
+      legend.text = element_text(size = rel(1.5), family = "Times New Roman"), 
       plot.title = element_text(face = "bold", hjust = 0.5, size = rel(1.3))
     )
 }
-
-# === 5. 绘图 ===
+# 5. 绘图
 p2 <- ggplot(plot_data, aes(x = recovery_type_label, y = value, fill = group)) +
   geom_violin(
     aes(group = interaction(recovery_type_label, group)),
@@ -447,9 +341,9 @@ p2 <- ggplot(plot_data, aes(x = recovery_type_label, y = value, fill = group)) +
     width = 0.15, outlier.shape = NA, alpha = 0.9, color = "black",
     position = position_dodge(width = 0.8)
   ) +
-  facet_wrap(~indicator, scales = "free_y", nrow = 2, ncol = 3) +  # 👈 两行三列
+  facet_wrap(~indicator, scales = "free_y", nrow = 2, ncol = 3) +  
   scale_fill_manual(values = c("LAI" = "#2CA02C", "WUE" = "#1F77B4")) +
-  guides(fill = guide_legend(keywidth = 2, keyheight = 2)) +  # 👈 控制图例图形大小
+  guides(fill = guide_legend(keywidth = 2, keyheight = 2)) +  
   geom_text(
     data = stat_tests,
     aes(x = recovery_type_label, y = y.position * 1.1, label = p.signif),
@@ -461,11 +355,6 @@ p2 <- ggplot(plot_data, aes(x = recovery_type_label, y = value, fill = group)) +
     y = NULL
   ) +
   theme_sci()
-
-# === 6. 显示图像 ===
-print(p2)
-
-# === 7. 保存图像 ===
 ggsave(
   filename = "LAI_WUE_Recovery_Indicators_with_Range.png",
   plot = p2,
@@ -474,30 +363,3 @@ ggsave(
   dpi = 600,
   bg = "white"
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
